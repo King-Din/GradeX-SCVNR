@@ -28,6 +28,11 @@ const envSchema = z.object({
 
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
 
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  GOOGLE_REFRESH_TOKEN: z.string().min(1),
+  GOOGLE_SPREADSHEET_ID: z.string().min(1),
+
   LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   API_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
