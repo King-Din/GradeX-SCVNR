@@ -17,8 +17,6 @@ const sheets = google.sheets({
 
 const spreadsheetId = env.GOOGLE_SPREADSHEET_ID;
 
-// Prevent two requests from generating the same ID
-// for the same sheet at the same time.
 const idLocks = new Map();
 
 async function withIdLock(sheetName, callback) {
@@ -46,7 +44,7 @@ async function withIdLock(sheetName, callback) {
 }
 
 // --------------------------------------------------
-// Read sheet data and convert rows into objects
+// READ SHEET DATA
 // --------------------------------------------------
 
 async function getSheetData(sheetName) {
@@ -75,8 +73,7 @@ async function getSheetData(sheetName) {
 }
 
 // --------------------------------------------------
-// Generate next stable ID
-// Example: T001, T002, T003
+// GENERATE NEXT STABLE ID
 // --------------------------------------------------
 
 async function generateNextId(sheetName, prefix) {
@@ -105,7 +102,7 @@ async function generateNextId(sheetName, prefix) {
 }
 
 // --------------------------------------------------
-// Find one row by ID
+// FIND BY ID
 // --------------------------------------------------
 
 async function findById(sheetName, id) {
@@ -115,11 +112,11 @@ async function findById(sheetName, id) {
 }
 
 // --------------------------------------------------
-// Append a new row
+// APPEND ROW
 // --------------------------------------------------
 
 async function appendRow(sheetName, data) {
-  const response = await sheets.spreadsheets.values.append({
+  await sheets.spreadsheets.values.append({
     spreadsheetId,
     range: sheetName,
     valueInputOption: "RAW",
@@ -135,7 +132,7 @@ async function appendRow(sheetName, data) {
 }
 
 // --------------------------------------------------
-// Update an existing row by ID
+// UPDATE BY ID
 // --------------------------------------------------
 
 async function updateById(sheetName, id, data) {
@@ -276,6 +273,25 @@ export async function createParticipation(data) {
       "Participations",
       participation
     );
+  });
+}
+
+export async function updateParticipation(id, data) {
+  const existingParticipation = await findById(
+    "Participations",
+    id
+  );
+
+  if (!existingParticipation) {
+    throw new Error(
+      `Participation with ID ${id} not found`
+    );
+  }
+
+  return updateById("Participations", id, {
+    ...existingParticipation,
+    ...data,
+    id
   });
 }
 
