@@ -1,0 +1,31 @@
+{
+  "name": "task-evaluation-b1-auth",
+  "version": "1.0.0",
+  "private": true,
+  "description": "B1 Authentication, User Management and RBAC module for the Task Evaluation System",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "check": "find src -name \"*.js\" -print0 | xargs -0 -n1 node --check",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "googleapis": "^184.0.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "nodemon": "^1.14.10"
+  }
+}
