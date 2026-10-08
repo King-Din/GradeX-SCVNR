@@ -17,8 +17,36 @@ const sheets = google.sheets({
 
 const spreadsheetId = env.GOOGLE_SPREADSHEET_ID;
 
+// Prevent two requests from generating the same ID
+// for the same sheet at the same time.
+const idLocks = new Map();
+
+async function withIdLock(sheetName, callback) {
+  const previousLock = idLocks.get(sheetName) || Promise.resolve();
+
+  let releaseLock;
+
+  const currentLock = new Promise((resolve) => {
+    releaseLock = resolve;
+  });
+
+  idLocks.set(sheetName, currentLock);
+
+  await previousLock;
+
+  try {
+    return await callback();
+  } finally {
+    releaseLock();
+
+    if (idLocks.get(sheetName) === currentLock) {
+      idLocks.delete(sheetName);
+    }
+  }
+}
+
 // --------------------------------------------------
-// GET ALL DATA FROM A SHEET
+// Read sheet data and convert rows into objects
 // --------------------------------------------------
 
 async function getSheetData(sheetName) {
@@ -47,7 +75,8 @@ async function getSheetData(sheetName) {
 }
 
 // --------------------------------------------------
-// GENERATE NEXT STABLE ID
+// Generate next stable ID
+// Example: T001, T002, T003
 // --------------------------------------------------
 
 async function generateNextId(sheetName, prefix) {
@@ -74,8 +103,9 @@ async function generateNextId(sheetName, prefix) {
 
   return `${prefix}${String(nextNumber).padStart(3, "0")}`;
 }
+
 // --------------------------------------------------
-// FIND ONE ROW BY ID
+// Find one row by ID
 // --------------------------------------------------
 
 async function findById(sheetName, id) {
@@ -85,43 +115,27 @@ async function findById(sheetName, id) {
 }
 
 // --------------------------------------------------
-// APPEND A NEW ROW
+// Append a new row
 // --------------------------------------------------
 
 async function appendRow(sheetName, data) {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: sheetName
-  });
-
-  const rows = response.data.values || [];
-
-  if (rows.length === 0) {
-    throw new Error(`Sheet "${sheetName}" has no header row`);
-  }
-
-  const headers = rows[0];
-
-  const newRow = headers.map((header) => data[header] ?? "");
-
-  const appendResponse = await sheets.spreadsheets.values.append({
+  const response = await sheets.spreadsheets.values.append({
     spreadsheetId,
     range: sheetName,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    includeValuesInResponse: true,
     requestBody: {
-      values: [newRow]
+      values: [
+        Object.values(data)
+      ]
     }
   });
-
-  console.log("APPEND RESPONSE:", appendResponse.data);
 
   return data;
 }
 
 // --------------------------------------------------
-// UPDATE A ROW BY ID
+// Update an existing row by ID
 // --------------------------------------------------
 
 async function updateById(sheetName, id, data) {
@@ -133,45 +147,52 @@ async function updateById(sheetName, id, data) {
   const rows = response.data.values || [];
 
   if (rows.length === 0) {
-    throw new Error(`Sheet "${sheetName}" has no header row`);
+    throw new Error(`${sheetName} sheet is empty`);
   }
 
   const headers = rows[0];
 
+  const idColumnIndex = headers.indexOf("id");
+
+  if (idColumnIndex === -1) {
+    throw new Error(`id column not found in ${sheetName}`);
+  }
+
   const rowIndex = rows.findIndex(
-    (row, index) => index > 0 && row[0] === id
+    (row, index) =>
+      index > 0 && row[idColumnIndex] === id
   );
 
   if (rowIndex === -1) {
-    return null;
+    throw new Error(
+      `${sheetName} record with ID ${id} not found`
+    );
   }
 
-  const updatedRow = headers.map((header, index) => {
-    if (data[header] !== undefined) {
-      return data[header];
-    }
+  const rowNumber = rowIndex + 1;
 
-    return rows[rowIndex][index] ?? "";
-  });
+  const updatedRow = headers.map(
+    (header) => data[header] ?? ""
+  );
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${sheetName}!A${rowIndex + 1}`,
+    range: `${sheetName}!A${rowNumber}`,
     valueInputOption: "RAW",
     requestBody: {
       values: [updatedRow]
     }
   });
 
-  return headers.reduce((object, header, index) => {
-    object[header] = updatedRow[index];
-    return object;
-  }, {});
+  return {
+    ...data,
+    id
+  };
 }
 
-// --------------------------------------------------
+// ==================================================
 // USERS
-// --------------------------------------------------
+// ==================================================
 
 export async function getUsers() {
   return getSheetData("Users");
@@ -186,23 +207,22 @@ export async function getUserByEmail(email) {
 
   return (
     users.find(
-      (user) =>
-        user.email.toLowerCase() === email.toLowerCase()
+      (user) => user.email === email
     ) || null
   );
 }
 
-// --------------------------------------------------
+// ==================================================
 // DOMAINS
-// --------------------------------------------------
+// ==================================================
 
 export async function getDomains() {
   return getSheetData("Domains");
 }
 
-// --------------------------------------------------
+// ==================================================
 // TASKS
-// --------------------------------------------------
+// ==================================================
 
 export async function getTasks() {
   return getSheetData("Tasks");
@@ -213,73 +233,102 @@ export async function getTaskById(id) {
 }
 
 export async function createTask(data) {
-  const id = await generateNextId("Tasks", "T");
+  return withIdLock("Tasks", async () => {
+    const id = await generateNextId("Tasks", "T");
 
-  const task = {
-    ...data,
-    id
-  };
+    const task = {
+      ...data,
+      id
+    };
 
-  return appendRow("Tasks", task);
+    return appendRow("Tasks", task);
+  });
 }
 
 export async function updateTask(id, data) {
-  return updateById("Tasks", id, data);
+  return updateById("Tasks", id, {
+    ...data,
+    id
+  });
 }
 
-// --------------------------------------------------
+// ==================================================
 // PARTICIPATIONS
-// --------------------------------------------------
+// ==================================================
 
 export async function getParticipations() {
   return getSheetData("Participations");
 }
 
 export async function createParticipation(data) {
-  const id = await generateNextId("Participations", "P");
+  return withIdLock("Participations", async () => {
+    const id = await generateNextId(
+      "Participations",
+      "P"
+    );
 
-  const participation = {
-    ...data,
-    id
-  };
+    const participation = {
+      ...data,
+      id
+    };
 
-  return appendRow("Participations", participation);
+    return appendRow(
+      "Participations",
+      participation
+    );
+  });
 }
 
-// --------------------------------------------------
+// ==================================================
 // SUBMISSIONS
-// --------------------------------------------------
+// ==================================================
 
 export async function getSubmissions() {
   return getSheetData("Submissions");
 }
 
 export async function createSubmission(data) {
-  const id = await generateNextId("Submissions", "S");
+  return withIdLock("Submissions", async () => {
+    const id = await generateNextId(
+      "Submissions",
+      "S"
+    );
 
-  const submission = {
-    ...data,
-    id
-  };
+    const submission = {
+      ...data,
+      id
+    };
 
-  return appendRow("Submissions", submission);
+    return appendRow(
+      "Submissions",
+      submission
+    );
+  });
 }
 
-// --------------------------------------------------
+// ==================================================
 // EVALUATIONS
-// --------------------------------------------------
+// ==================================================
 
 export async function getEvaluations() {
   return getSheetData("Evaluations");
 }
 
 export async function createEvaluation(data) {
-  const id = await generateNextId("Evaluations", "E");
+  return withIdLock("Evaluations", async () => {
+    const id = await generateNextId(
+      "Evaluations",
+      "E"
+    );
 
-  const evaluation = {
-    ...data,
-    id
-  };
+    const evaluation = {
+      ...data,
+      id
+    };
 
-  return appendRow("Evaluations", evaluation);
+    return appendRow(
+      "Evaluations",
+      evaluation
+    );
+  });
 }
