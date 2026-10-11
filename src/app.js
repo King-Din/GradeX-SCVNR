@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { userRouter } from "./routes/user.routes.js";
+import { taskRouter } from "./routes/task.routes.js";
 import { failure, success } from "./utils/apiResponse.js";
 import { ERROR_CODES } from "./constants/errors.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
@@ -79,6 +80,7 @@ app.get("/health", (req, res) => {
 app.use("/api/auth/login", loginLimiter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
+app.use("/api/tasks", taskRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
