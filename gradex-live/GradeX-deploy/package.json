@@ -1,0 +1,15 @@
+{
+  "name": "gradex-demo-deploy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.4",
+    "@vercel/blob": "^2.8.2",
+    "bcryptjs": "^3.0.3",
+    "esbuild": "^0.28.2",
+    "serverless-http": "^4.0.0"
+  }
+}

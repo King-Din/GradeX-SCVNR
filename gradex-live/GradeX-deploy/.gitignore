@@ -1,0 +1,11 @@
+# Local Netlify folder
+.netlify
+# Emergency demo-reset keys: never commit
+.reset-tokens.txt
+# Build output (holds Vercel's link token in sites/vercel/.env.local)
+sites/
+qa/out/
+node_modules/
+.env*
+.vercel
+.DS_Store
