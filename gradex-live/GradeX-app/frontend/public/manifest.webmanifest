@@ -1,0 +1,16 @@
+{
+  "name": "GradeX · Street Cause VNRVJIET",
+  "short_name": "GradeX",
+  "description": "Tasks, submissions and scores for Street Cause VNRVJIET.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#E9F0F8",
+  "theme_color": "#1D5FBF",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
